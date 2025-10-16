@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Antrian Dukcapil Kota Palu</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #004a99, #007bff);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      color: #333;
+      padding: 40px 20px;
+    }
+    .container {
+      background: #fff;
+      width: 100%;
+      max-width: 900px;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      padding: 25px;
+      text-align: center;
+    }
+    h1 {
+      color: #004a99;
+      font-weight: 600;
+      font-size: 20px;
+    }
+    button, input {
+      width: 90%;
+      padding: 12px;
+      margin: 6px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #noSekarang {
+      font-size: 26px;
+      font-weight: bold;
+      color: #d63031;
+      margin-top: 15px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+    th {
+      background: #f0f6ff;
+    }
+    .panggil { color: #2e7d32; font-weight: bold; }
+    .belum { color: #777; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img id="logo" alt="Logo Dinas" width="100" />
+    <h1>Admin - Antrian Dinas Dukcapil Kota Palu</h1>
+
+    <input type="file" id="uploadLogo" accept="image/*" onchange="unggahLogo()" />
+    <button onclick="hapusLogo()">Hapus Logo</button>
+
+    <div id="noSekarang">Belum ada antrian</div>
+    <button onclick="panggilAntrian()">Panggil Antrian</button>
+    <button onclick="panggilSelanjutnya()">Panggil Selanjutnya</button>
+    <button onclick="panggilKembali()">Panggil Kembali</button>
+
+    <h3>Daftar Semua Antrian</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama</th>
+          <th>NIK</th>
+          <th>No. HP</th>
+          <th>Email</th>
+          <th>Urusan</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabelAntrian"></tbody>
+    </table>
+  </div>
+
+  <script>
+    // === LOGO ===
+    const logo = document.getElementById("logo");
+    const logoSrc = localStorage.getItem("logoDinas");
+    if (logoSrc) logo.src = logoSrc;
+
+    function unggahLogo() {
+      const file = uploadLogo.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        logo.src = reader.result;
+        localStorage.setItem("logoDinas", reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function hapusLogo() {
+      localStorage.removeItem("logoDinas");
+      logo.src = "";
+    }
+
+    // === SUARA INDONESIA ===
+    let voiceID;
+    function loadVoiceIndonesia() {
+      const voices = speechSynthesis.getVoices();
+      voiceID = voices.find(v => v.lang === "id-ID" || v.name.toLowerCase().includes("indonesia"));
+    }
+    speechSynthesis.onvoiceschanged = loadVoiceIndonesia;
+
+    // === DATA ANTRIAN ===
+    function load() {
+      const raw = localStorage.getItem("antrian_data");
+      return raw ? JSON.parse(raw) : { lastNo: 0, dipanggil: 0, list: [] };
+    }
+    function save(data) {
+      localStorage.setItem("antrian_data", JSON.stringify(data));
+    }
+
+    function renderTabel() {
+      const tbody = document.getElementById("tabelAntrian");
+      tbody.innerHTML = "";
+      const data = load();
+      data.list.forEach(it => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${it.no}</td>
+          <td>${it.nama}</td>
+          <td>${it.nik}</td>
+          <td>${it.hp}</td>
+          <td>${it.email}</td>
+          <td>${it.urusan}</td>
+          <td class="${it.no <= data.dipanggil ? "panggil" : "belum"}">
+            ${it.no <= data.dipanggil ? "Sudah Dipanggil" : "Menunggu"}
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // === PEMANGGILAN ===
+    function panggilAntrian() {
+      const data = load();
+      if (data.list.length === 0) return alert("Belum ada antrian.");
+      let next = data.dipanggil + 1;
+      if (next > data.lastNo) return alert("Semua antrian sudah dipanggil.");
+      data.dipanggil = next;
+      save(data);
+      tampilkan(data.list[next - 1]);
+      renderTabel();
+    }
+
+    function panggilSelanjutnya() {
+      panggilAntrian();
+    }
+
+    function panggilKembali() {
+      const data = load();
+      const cur = data.list[data.dipanggil - 1];
+      if (!cur) return alert("Belum ada antrian yang dipanggil.");
+      tampilkan(cur);
+    }
+
+    function tampilkan(item) {
+      document.getElementById("noSekarang").innerText = "Nomor Antrian: " + item.no;
+      playSuara(item);
+    }
+
+    // === SUARA PEMANGGIL ===
+    function playSuara(item) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      function beep(freq, dur, t = 0) {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = "sine"; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime + t);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + dur / 1000);
+      }
+      beep(800, 200);
+      beep(600, 300, 0.25);
+
+      setTimeout(() => {
+        const teks = `Kepada pengunjung Dinas Kependudukan dan Pencatatan Sipil Kota Palu, nomor antrian ${item.no}, atas nama ${item.nama}, silakan menuju loket pelayanan atau pendaftaran.`;
+        const ucap = new SpeechSynthesisUtterance(teks);
+        ucap.lang = "id-ID";
+        ucap.voice = voiceID;
+        ucap.rate = 0.9;
+        ucap.pitch = 1;
+        speechSynthesis.cancel();
+        speechSynthesis.speak(ucap);
+      }, 1000);
+    }
+
+    renderTabel();
+    setInterval(renderTabel, 2000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antrian Online Dinas Kependudukan dan Pencatatan Sipil Kota Palu</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #007bff, #00aaff);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px;
+      min-height: 100vh;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 500px;
+      padding: 25px;
+      text-align: center;
+    }
+    h1 {
+      color: #004a99;
+      font-size: 20px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    input {
+      width: 90%;
+      padding: 12px;
+      margin: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.3s;
+      width: 90%;
+      margin-top: 8px;
+    }
+    button:hover { background: #0056b3; }
+    .hasil, .sisa {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f8f9fa;
+      width: 90%;
+      text-align: center;
+      font-weight: bold;
+    }
+    #logo {
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+    footer {
+      margin-top: 25px;
+      font-size: 13px;
+      color: #fff;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img id="logo" width="100" alt="Logo Dinas">
+    <h1>Antrian Online Dinas Kependudukan dan Pencatatan Sipil Kota Palu</h1>
+
+    <input type="text" id="nama" placeholder="Nama Lengkap" required>
+    <input type="text" id="nik" placeholder="NIK" required>
+    <input type="text" id="hp" placeholder="Nomor HP" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="text" id="urusan" placeholder="Jenis Urusan (contoh: KTP, KK, Akta)" required>
+
+    <button onclick="ambilAntrian()">Ambil Antrian</button>
+
+    <div class="hasil" id="hasil">Nomor antrian Anda akan muncul di sini</div>
+    <div class="sisa" id="sisa">Sisa antrian saat ini: 0</div>
+  </div>
+
+  <footer>© 2025 Dinas Kependudukan dan Pencatatan Sipil Kota Palu</footer>
+
+  <script>
+    // === LOGO ===
+    const logo = document.getElementById("logo");
+    const logoSrc = localStorage.getItem("logoDinas");
+    if (logoSrc) logo.src = logoSrc;
+
+    // === DATABASE ANTRIAN ===
+    function load() {
+      const raw = localStorage.getItem("antrian_data");
+      return raw ? JSON.parse(raw) : { lastNo: 0, dipanggil: 0, list: [] };
+    }
+    function save(data) {
+      localStorage.setItem("antrian_data", JSON.stringify(data));
+    }
+
+    // === AMBIL ANTRIAN ===
+    function ambilAntrian() {
+      const nama = document.getElementById("nama").value.trim();
+      const nik = document.getElementById("nik").value.trim();
+      const hp = document.getElementById("hp").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const urusan = document.getElementById("urusan").value.trim();
+
+      if (!nama || !nik || !hp || !email || !urusan) {
+        alert("Harap isi semua data terlebih dahulu!");
+        return;
+      }
+
+      const data = load();
+      const noBaru = data.lastNo + 1;
+      data.lastNo = noBaru;
+      data.list.push({ no: noBaru, nama, nik, hp, email, urusan });
+      save(data);
+
+      document.getElementById("hasil").innerText = 
+        `Nomor antrian Anda: ${noBaru}`;
+      updateSisa();
+    }
+
+    // === SISA ANTRIAN ===
+    function updateSisa() {
+      const data = load();
+      const sisa = data.lastNo - data.dipanggil;
+      document.getElementById("sisa").innerText = 
+        `Sisa antrian saat ini: ${sisa}`;
+    }
+
+    setInterval(updateSisa, 2000);
+    updateSisa();
+  </script>
+</body>
+</html>
